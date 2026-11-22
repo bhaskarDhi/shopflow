@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+coverage/
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+
+# obsidian
+notes/.obsidian/workspace.json
