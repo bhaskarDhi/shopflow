@@ -84,3 +84,37 @@ Check: `gh api repos/bhaskarDhi/shopflow/rulesets` · `gh api repos/bhaskarDhi/s
 Validate: `gh api "repos/bhaskarDhi/shopflow/codeowners/errors?ref=<branch>"` → `{"errors":[]}` = OK
 
 **Mistakes I made:** `mkdir .github/CODEOWNERS` made a **folder** (git ignores empty folders → nothing committed; use `touch`). Wrote all patterns on 1 line → `Invalid owner`.
+
+## Step 4: Dependabot ✅
+
+| Part | What | How |
+|---|---|---|
+| A. Security updates | PR when a package has a known CVE | repo setting (below) |
+| B. Version updates | PRs on a schedule for new versions | `.github/dependabot.yml` |
+
+```bash
+# A: alerts first, then automatic security PRs
+gh api -X PUT repos/bhaskarDhi/shopflow/vulnerability-alerts
+gh api -X PUT repos/bhaskarDhi/shopflow/automated-security-fixes
+# check: 204 = on, 404 = off
+gh api repos/bhaskarDhi/shopflow/vulnerability-alerts -i | sed -n 1p
+gh api repos/bhaskarDhi/shopflow/automated-security-fixes      # {"enabled":true}
+```
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories: ["/services/api", "/services/worker", "/web"]
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(deps)"          # keeps Conventional Commits; (deps) = scope
+    groups:
+      npm-minor-patch:
+        update-types: ["minor", "patch"]   # small updates → 1 PR; majors → 1 PR each
+```
+
+Later: add `docker` (Phase 1) and `github-actions` (Phase 3) items.
+**Don't merge Dependabot PRs without CI** (majors like express 4→5 can break the app) → Phase 3 makes CI run on them.
