@@ -1,1 +1,7 @@
-*, /services/api/, /services/worker/, /web/, each followed by @bhaskarDhi
+# Default owner for everything
+*                   @bhaskarDhi
+
+# Each service
+/services/api/      @bhaskarDhi
+/services/worker/   @bhaskarDhi
+/web/               @bhaskarDhi
