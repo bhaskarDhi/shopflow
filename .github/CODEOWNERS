@@ -1,0 +1,7 @@
+# Default owner for everything
+*                   @bhaskarDhi
+
+# Each service
+/services/api/      @bhaskarDhi
+/services/worker/   @bhaskarDhi
+/web/               @bhaskarDhi
