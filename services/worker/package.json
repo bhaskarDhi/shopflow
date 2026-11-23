@@ -10,7 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "ioredis": "^5.4.2",
+    "ioredis": "^6.0.0",
     "pg": "^8.13.1"
   },
   "devDependencies": {
