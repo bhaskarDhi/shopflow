@@ -24,6 +24,19 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  migrate:
+    build: ./services/api
+    command: ["node", "src/migrate.js"]
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"    
 
 volumes:
   dbdata:

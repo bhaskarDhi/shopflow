@@ -78,3 +78,52 @@ docker compose exec redis redis-cli ping           # PONG
 ```
 
 **Mistakes I made:** `${POSTGRES_NAME}` but `.env` has `POSTGRES_DB` (→ empty value, compose warns); wrote services from later steps too early.
+
+## Step 2: `migrate` (one-shot service) ✅
+
+```yaml
+  migrate:
+    build: ./services/api                  # same image as the api
+    command: ["node", "src/migrate.js"]    # replaces the image CMD
+    environment:
+      DB_HOST: db                          # service name = hostname
+      DB_PORT: "5432"                      # INSIDE port (not 5433 = Mac door)
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy         # wait until pg_isready works
+    restart: "no"                          # only this container; a job must end
+```
+
+| `restart:` | |
+|---|---|
+| `"no"` (default) | one-shot jobs (quotes: `no` without quotes = false) |
+| `always` / `unless-stopped` | servers |
+| `on-failure` | retry only when exit code ≠ 0 |
+
+### Where the data lives
+
+`migrate` container (code only) → sends SQL → `db` container (Postgres program) → saves in the **`dbdata` volume**.
+
+| Command | Data |
+|---|---|
+| restart db / run migrate again / `down` + `up` | ✅ kept |
+| `docker compose down -v` | ❌ **deleted** (volume removed) |
+
+### Migration rules
+
+| Rule | |
+|---|---|
+| `schema_migrations` remembers applied files → `skip` | protection 1: the file doesn't run again |
+| `CREATE TABLE IF NOT EXISTS` | protection 2: create only if missing, **never changes** an existing table |
+| change the DB = a **new file** `002_xxx.sql` (`ALTER TABLE ... ADD COLUMN`) | never edit an applied file |
+
+```bash
+docker compose up migrate           # no -d → watch: applied / skip, "exited with code 0"
+docker compose ps -a                # migrate → Exited (0)
+docker compose exec db psql -U shopflow -c '\dt'
+```
+
+`ECONNREFUSED ...:5433` = used the Mac port inside compose → inside always `db:5432`.
