@@ -74,3 +74,46 @@ Same as the api, with 3 differences:
 Worker is **healthy without Redis**: the loop catches the error and keeps running → not stuck → restarting would not help.
 
 **Mistakes I made:** `EXPOSE 6379` (Redis port), `COPY src` before `npm ci` again, extra `COPY src ./` (duplicate files).
+
+## Step 3: web image (multi-stage + non-root nginx) ✅
+
+```dockerfile
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci                       # WITH dev deps: vite is a devDependency
+COPY index.html vite.config.js ./
+COPY src ./src
+RUN npm run build                # → /app/dist
+
+FROM nginxinc/nginx-unprivileged:1.27-alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+HEALTHCHECK --interval=30s --timeout=3s CMD ["wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+EXPOSE 8080
+```
+
+| Keyword | Meaning |
+|---|---|
+| multi-stage | many `FROM`; only the **last** stage = the image (no node, no source) |
+| `AS build` / `COPY --from=build` | name a stage / copy from it |
+| `nginx-unprivileged` | runs as user **101**, port **8080** (ports < 1024 need root) |
+
+`nginx.conf`: `listen 8080` · `location = /healthz { return 200 'ok'; }` · `location /api/ { proxy_pass http://api:3000; }` · `location / { try_files $uri /index.html; }`
+
+`.dockerignore`: `node_modules`, `dist`, `.env`, `*.log`
+
+### Gotchas
+
+| Problem | Why | Fix |
+|---|---|---|
+| `host not found in upstream "api"` → exit 1 | nginx looks up `proxy_pass` hosts **at start** | compose: `depends_on: api`; k8s: Service name exists; alone: `--add-host api:127.0.0.1` |
+| healthcheck `Connection refused` | in this image `localhost` = `::1` (IPv6); `listen 8080` = IPv4 only | use `127.0.0.1` in HEALTHCHECK |
+| `FromAsCasing` warning | `FROM ... as` | write `AS` |
+
+Test alone:
+```bash
+docker run -d --name web-test --add-host api:127.0.0.1 --health-interval=2s -p 8080:8080 shopflow-web:dev
+docker inspect -f '{{.State.Health.Status}}' web-test   # healthy
+curl localhost:8080/healthz                              # ok;  /api/... → 502 (no api) = expected
+```
