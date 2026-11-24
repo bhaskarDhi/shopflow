@@ -117,3 +117,18 @@ docker run -d --name web-test --add-host api:127.0.0.1 --health-interval=2s -p 8
 docker inspect -f '{{.State.Health.Status}}' web-test   # healthy
 curl localhost:8080/healthz                              # ok;  /api/... → 502 (no api) = expected
 ```
+
+## Step 4: Dependabot for base images ✅
+
+Add to `.github/dependabot.yml` (under the npm item, same indent):
+
+```yaml
+  - package-ecosystem: docker
+    directories: ["/services/api", "/services/worker", "/web"]
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(deps)"
+```
+
+Dependabot reads the `FROM` lines → opens a PR when `node:22-alpine` / `nginx-unprivileged` has a newer version. Old base images = many CVEs (Trivy, Phase 4).
