@@ -51,3 +51,26 @@ docker rm -f api-test
 `--health-interval=2s` overrides the 30 s from the Dockerfile → faster test.
 
 **Mistakes I made:** `nodemodules` (typo → not ignored), `ENV port 3000` (lowercase + old format), `COPY migrations` before `npm ci` (breaks cache).
+
+## Step 2: worker image ✅
+
+Same as the api, with 3 differences:
+
+| | api | worker |
+|---|---|---|
+| `COPY migrations` | yes | **no** (no migrations folder) |
+| `EXPOSE` | 3000 | **8080** (its own health server) |
+| `HEALTHCHECK` URL | `/healthz` | `http://localhost:8080/` |
+| `CMD` | `src/server.js` | `src/worker.js` |
+
+| Rule | |
+|---|---|
+| `EXPOSE` = ports the container **listens on** | not the ports it connects to (Redis 6379 is not the worker's port) |
+| `COPY src ./src` | → `/app/src/` ✅ |
+| `COPY src ./` | → contents into `/app/` (no `src` folder) ❌ |
+| hadolint checks **style**, not meaning | look inside: `docker run --rm --entrypoint ls <image> -p /app /app/src` |
+| graceful stop | `docker stop` sends SIGTERM → exit code **0** = shutdown code ran; **137** = killed (SIGKILL) after the timeout |
+
+Worker is **healthy without Redis**: the loop catches the error and keeps running → not stuck → restarting would not help.
+
+**Mistakes I made:** `EXPOSE 6379` (Redis port), `COPY src` before `npm ci` again, extra `COPY src ./` (duplicate files).
