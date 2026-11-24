@@ -13,7 +13,7 @@ code → PR → CI (lint, test, scan, build multi-arch, sign) → GHCR
 | # | Phase | New vs the todo app | Status |
 |---|---|---|---|
 | 0 | **Repo rules** | branch protection on `main` (PR + green CI required), Conventional Commits, `CODEOWNERS`, Dependabot | ✅ (CI check added in Phase 3) |
-| 1 | **Containers** | 3 images; multi-stage + non-root + `HEALTHCHECK`; migration as its own command; `hadolint` | ☐ |
+| 1 | **Containers** | 3 images; multi-stage + non-root + `HEALTHCHECK`; migration as its own command; `hadolint` | ✅ |
 | 2 | **Local dev** | `compose.yaml` with Postgres + Redis + a one-shot `migrate` service (`depends_on: service_completed_successfully`) | ☐ |
 | 3 | **CI: quality** | jobs per service (monorepo **path filters**), `npm ci` cache, lint + unit tests, **integration test with service containers** (real Postgres/Redis in CI), `concurrency` | ☐ |
 | 4 | **CI: supply chain** | `docker buildx` **multi-arch** (amd64 + arm64) with layer cache, **Trivy** scan (fail on HIGH/CRITICAL), **SBOM**, **cosign** keyless signing, tags `sha-<7>` + `vX.Y.Z` (no mutable `latest`) | ☐ |

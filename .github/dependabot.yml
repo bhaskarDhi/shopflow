@@ -12,3 +12,12 @@ updates:
     groups:
       npm-minor-patch:
         update-types: ["minor","patch"]
+  - package-ecosystem: docker
+    directories:
+      - "/services/api"
+      - "/services/worker"
+      - "/web"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(deps)"      
