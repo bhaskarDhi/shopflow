@@ -15,3 +15,5 @@ One file per tool, added as I go (see [../PLAN.md](../PLAN.md)).
 | 7 | 07-secrets.md | ☐ |
 | 8 | 08-monitoring.md | ☐ |
 | 9 | 09-rollouts.md | ☐ |
+
+**Concepts:** [concepts-users-and-ports.md](concepts-users-and-ports.md) (Linux users, UIDs, ports, container ↔ Mac)
