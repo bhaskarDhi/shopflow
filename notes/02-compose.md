@@ -127,3 +127,54 @@ docker compose exec db psql -U shopflow -c '\dt'
 ```
 
 `ECONNREFUSED ...:5433` = used the Mac port inside compose → inside always `db:5432`.
+
+## Step 3: `api` + `worker` ✅
+
+```
+db (healthy) ──► migrate (exit 0) ──┬──► api     (127.0.0.1:3000)
+redis (healthy) ────────────────────┴──► worker  (no ports)
+```
+
+```yaml
+  api:
+    build: ./services/api
+    image: shopflow-api:local              # same name as migrate → 1 image, 2 commands
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://redis:6379        # protocol://service-name:inside-port
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully   # tables exist first
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+```
+
+Worker = same, but `build: ./services/worker`, `image: shopflow-worker:local`, **no `ports:`** (health 8080 is used inside by HEALTHCHECK).
+
+| `depends_on` condition | Waits until |
+|---|---|
+| `service_started` (default) | the container started (not ready!) |
+| `service_healthy` | its healthcheck passes |
+| `service_completed_successfully` | it **exited with code 0** (one-shot jobs) |
+
+**Inside a container, `localhost` = the container itself.** No env → worker defaults to `localhost` → never finds db/redis → orders stay `pending`. Always use the **service name**.
+
+`build:` + `image:` = build and give the image this name (without `image:`, compose names it `<project>-<service>`).
+
+Test a real order:
+```bash
+docker compose up -d --build
+curl localhost:3000/readyz                                     # ready (503 in Phase 1 without db)
+curl -X POST localhost:3000/api/orders -H 'Content-Type: application/json' -d '{"productId":1,"quantity":2}'
+curl localhost:3000/api/orders/1                               # processed
+docker compose logs worker                                     # order 1 processed
+```
+
+**Mistakes I made:** worker without `environment:`; worker `ports: 8080` (not needed + clashes with web later).
