@@ -178,3 +178,36 @@ docker compose logs worker                                     # order 1 process
 ```
 
 **Mistakes I made:** worker without `environment:`; worker `ports: 8080` (not needed + clashes with web later).
+
+## Step 4: `web` ✅ (Phase 2 done)
+
+```
+browser → localhost:8080 → web (nginx :8080) ──/api──► api:3000 → db
+                                                         redis → worker → db
+```
+
+```yaml
+  web:
+    build: ./web
+    image: shopflow-web:local
+    ports:
+      - "127.0.0.1:8080:8080"        # same number in/out = easy; 80/443 only in production (Ingress)
+    depends_on:
+      api:
+        condition: service_healthy   # nginx crashes if host "api" doesn't exist at start
+    restart: unless-stopped
+```
+
+No `environment:` (nginx needs no DB/Redis). `"80:8080"` also works (Docker opens 80, not nginx) — but 8080 locally = fewer conflicts, team habit.
+
+`docker compose ps` shows `worker ... 8080/tcp` **without** `127.0.0.1:...->` = only the `EXPOSE` from the Dockerfile, **not** opened on the Mac.
+
+### Daily commands
+
+| Command | |
+|---|---|
+| `docker compose up -d --build` | start everything (rebuild changed images) |
+| `docker compose ps -a` | status (+ stopped one-shot jobs) |
+| `docker compose logs -f worker` | live logs, Ctrl+C to stop watching |
+| `docker compose down` | stop + remove containers, **keep** data |
+| `docker compose down -v` | ❌ also **delete** the data volume |

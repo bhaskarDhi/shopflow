@@ -6,7 +6,7 @@ One file per tool, added as I go (see [../PLAN.md](../PLAN.md)).
 |---|---|---|
 | 0 | 00-repo-rules.md | ✅ |
 | 1 | 01-docker.md | ✅ |
-| 2 | 02-compose.md | ◐ |
+| 2 | 02-compose.md | ✅ |
 | 2 | 02-github-ci.md | ☐ |
 | 3 | 03-terraform.md | ☐ |
 | 4 | 04-ansible.md | ☐ |
