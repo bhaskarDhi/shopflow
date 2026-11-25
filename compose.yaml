@@ -26,6 +26,7 @@ services:
       retries: 10
   migrate:
     build: ./services/api
+    image: shopflow-api:local
     command: ["node", "src/migrate.js"]
     environment:
       DB_HOST: db
@@ -37,6 +38,45 @@ services:
       db:
         condition: service_healthy
     restart: "no"    
+  api:
+    build: ./services/api
+    image: shopflow-api:local
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "127.0.0.1:3000:3000" 
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+  worker:
+    build:  ./services/worker
+    image: shopflow-worker:local
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB}
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_URL: redis://redis:6379
+    
+    depends_on:
+      redis:
+        condition: service_healthy
+      db: 
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped    
 
+      
+      
 volumes:
   dbdata:
