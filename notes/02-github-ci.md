@@ -76,3 +76,50 @@ Built into Node ≥ 20: `node:test` (run) + `node:assert/strict` (check) → `no
 
 Rule: a cache made on a **PR** can only be used by **that PR**. A cache made on **`main`** can be used by **every** branch/PR.
 Small project (206 packages) → cache saves only a few seconds; time also changes run to run.
+
+## Step 2a: worker + web jobs ✅
+
+3 jobs run **at the same time**, each on its **own** fresh computer (so each needs checkout + setup-node).
+
+| | api | worker | web |
+|---|---|---|---|
+| folder + lock file | `services/api` | `services/worker` | `web` |
+| checks | lint + test | lint + test | **build** (no lint/test scripts) |
+
+**Mistake I made:** web's `npm run build` ended up in the worker job, and no web job → `npm error Missing script: "build"` → CI red ❌ **before** merge = CI did its job.
+
+## What is lint?
+
+**Lint = a robot that reads my code (without running it) and finds mistakes + bad style.**
+Tool: **ESLint** (`npm run lint` → `eslint .`). Rules: `eslint.config.js` → `js.configs.recommended` + Node globals.
+
+| Code | ESLint says | Rule |
+|---|---|---|
+| `const x = 5;` (never used) | `'x' is assigned a value but never used` | `no-unused-vars` |
+| `consle.log('hi')` (typo) | `'consle' is not defined` | `no-undef` |
+| `if (a = 5)` | assignment in a condition, probably meant `===` | `no-cond-assign` |
+| `return 1; console.log('x')` | code after return never runs | `no-unreachable` |
+
+| | lint | test |
+|---|---|---|
+| runs the code? | ❌ only **reads** it | ✅ runs it |
+| finds | typos, unused things, risky patterns | wrong **behaviour** (wrong answer, wrong status) |
+
+Real example in `app.js`: `// eslint-disable-next-line no-unused-vars` above the Express error handler — `next` must be there (Express needs 4 arguments) but is not used → tell ESLint "I know, skip this line".
+
+Try: add `const unused = 1;` in `src/app.js` → `npm run lint` → error with **file:line:column** → remove it.
+
+## How to read the log when CI fails
+
+| Way | Command / place |
+|---|---|
+| status of the PR | `gh pr checks` (or `gh pr checks --watch`) |
+| **only the failed step** (fastest) | `gh run view --log-failed` |
+| a specific run | `gh run list` → `gh run view <id> --log-failed` |
+| everything | `gh run view <id> --log` |
+| in the browser | PR → **Checks** tab (or "Details" next to the ❌) → click the red step |
+| rerun (e.g. GitHub had a hiccup) | `gh run rerun <id> --failed` |
+
+Read from the **bottom up**: the last lines say `##[error]Process completed with exit code 1`; the real reason is a few lines **above** (e.g. `npm error Missing script: "build"`, or ESLint `file:line:col  error  ...`, or a test `✖ ... expected 201, actual 400`).
+
+Then: fix locally → run the same command on my Mac (`npm run lint` / `npm test` / `npm run build`) → green → push to the **same** PR → CI runs again.
