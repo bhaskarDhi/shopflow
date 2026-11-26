@@ -23,13 +23,13 @@ jobs:
           filters: |
             api: 
               - 'services/api/**'
-              - '.gihub/workflows/ci.yml'
+              - '.github/workflows/ci.yml'
             worker: 
               - 'services/worker/**'
-              - '.gihub/workflows/ci.yml'
+              - '.github/workflows/ci.yml'
             web: 
               - 'web/**'
-              - '.gihub/workflows/ci.yml'     
+              - '.github/workflows/ci.yml'     
 
   api:
     needs: changes
