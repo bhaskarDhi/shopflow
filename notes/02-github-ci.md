@@ -64,3 +64,15 @@ What to test: **good case · bad input · broken dependency** (fake db that thro
 | end-to-end | everything | clicking Buy |
 
 Built into Node ≥ 20: `node:test` (run) + `node:assert/strict` (check) → `node --test`. `supertest` (npm) = fake HTTP requests to Express.
+
+### Cache: who can use whose cache?
+
+| Run | Cache |
+|---|---|
+| PR run 1 | not found → saved (for this PR only) |
+| PR run 2 (same PR) | **restored** ✅ |
+| push to `main` after merge | not found → saved for `main` |
+| new PRs later | can restore **`main`'s** cache ✅ |
+
+Rule: a cache made on a **PR** can only be used by **that PR**. A cache made on **`main`** can be used by **every** branch/PR.
+Small project (206 packages) → cache saves only a few seconds; time also changes run to run.

@@ -23,6 +23,21 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/worker
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/worker/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build    
 
 
 
