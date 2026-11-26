@@ -123,3 +123,53 @@ Try: add `const unused = 1;` in `src/app.js` → `npm run lint` → error with *
 Read from the **bottom up**: the last lines say `##[error]Process completed with exit code 1`; the real reason is a few lines **above** (e.g. `npm error Missing script: "build"`, or ESLint `file:line:col  error  ...`, or a test `✖ ... expected 201, actual 400`).
 
 Then: fix locally → run the same command on my Mac (`npm run lint` / `npm test` / `npm run build`) → green → push to the **same** PR → CI runs again.
+
+## Step 2b: path filters ✅
+
+Goal: run only the job for the folder that changed.
+
+| Way | Problem |
+|---|---|
+| ❌ `on: pull_request: paths: [...]` (top of workflow) | PR without matching files → workflow **never starts** → required check never arrives → PR **stuck forever** ("Expected — waiting for status") |
+| ✅ a `changes` job + `if:` on each job | workflow **always** starts; jobs **skip** themselves; **skipped = OK** for required checks |
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: read            # paths-filter reads the PR's file list (needed in private repos)
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:                     # answers for other jobs
+      api: ${{ steps.filter.outputs.api }}
+      worker: ${{ steps.filter.outputs.worker }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter               # name, so steps.filter.outputs.X works
+        with:
+          filters: |
+            api:
+              - 'services/api/**'          # ** = everything inside, any depth
+              - '.github/workflows/ci.yml' # CI changed → test everything
+            worker: [...]
+            web: [...]
+  api:
+    needs: changes                                  # wait for the decider
+    if: needs.changes.outputs.api == 'true'         # run only if api changed
+```
+
+Result (test PR #30, only `web/index.html` changed): `changes ✓  web ✓  api ⏭ skipping  worker ⏭ skipping`
+
+**Mistakes I made (and merged, because no check was required yet!):**
+- `need.changes` → workflow file broken → run failed before any job (#26)
+- `.gihub/workflows/ci.yml` → path never matched → CI changes **tested nothing** but showed ✅ (#27, #28). A green check that tested nothing = dangerous.
+- fixed the typo locally but **never pushed** → GitHub doesn't see it.
+
+### Git / shell lessons
+
+| Problem | Fix |
+|---|---|
+| after a squash merge: `main...origin/main [ahead 1, behind 1]` | `git switch main && git fetch --prune && git reset --hard origin/main` |
+| `zsh: event not found` with `!` in `"..."` | use **single quotes** `'...'` (no `!` / `$` changes) |
