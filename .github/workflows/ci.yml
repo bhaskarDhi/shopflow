@@ -8,7 +8,31 @@ on:
 permissions:
   contents: read
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{steps.filter.outputs.api}}
+      worker: ${{steps.filter.outputs.worker}}
+      web: ${{steps.filter.outputs.web}}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api: 
+              - 'services/api/**'
+              - '.gihub/workflows/ci.yml'
+            worker: 
+              - 'services/worker/**'
+              - '.gihub/workflows/ci.yml'
+            web: 
+              - 'web/**'
+              - '.gihub/workflows/ci.yml'     
+
   api:
+    needs: changes
+    if: need.changes.outputs.api=='true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -24,6 +48,8 @@ jobs:
       - run: npm run lint
       - run: npm test
   worker:
+    needs: changes
+    if: need.changes.outputs.worker=='true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -39,6 +65,8 @@ jobs:
       - run: npm run lint
       - run: npm test
   web:
+    needs: changes
+    if: need.changes.outputs.web=='true'
     runs-on: ubuntu-latest
     defaults:
       run:
